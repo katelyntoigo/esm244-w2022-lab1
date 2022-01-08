@@ -1,0 +1,120 @@
+---
+title: "ESM 244 Lab 1"
+author: "Katelyn Toigo"
+date: "1/6/2022"
+output: html_document
+---
+
+```{r setup, include=TRUE, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+library(tidyverse)
+library(here)
+library(sf)
+library(tmap)
+### install.packages('tmap')
+### update.packages(ask = FALSE)
+```
+ 
+ cmd-shift-enter is shortcut for running current code chunk
+ 
+### Read in the data
+
+cmd-option-i is shortcut for creating a code chunk
+
+```{r}
+sf_trees <- read_csv(here('data', 'sf_trees', 'sf_trees.csv'),
+                     show_col_types = FALSE)
+```
+
+can put in console: comment out if in code.
+View(sf_trees) shows the table of data
+Name(sf_trees) shows the column names
+summary(sf_trees) shows some stats and info
+
+Hashtag outside of code chunk is the size of the header
+Hashtag in a code chunk omit that note from the running code - comment it out
+
+### Part 1: wrangling and ggplot review
+
+**Example 1:** Find counts of observations by `legal_status` and wrangle a bit. 
+2 asterisks before and after make it bold
+
+```{r}
+### method 1: group_by() %>% summarize()
+sf_trees %>% # not assigned to an object, so will print to the page
+  group_by(legal_status) %>% 
+  summarize(tree_count = n()) # tree count is assigned to be the name of the rows
+
+### method 2: different way plus a few new functions
+top_5_status <- sf_trees %>% # assigned the function to an object this time
+  count(legal_status) %>% 
+  drop_na(legal_status) %>% 
+  rename(tree_count = n) %>% 
+  relocate(tree_count) %>% # makes the tree_count column the first on the table
+  slice_max(tree_count, n=5) %>% 
+  arrange(desc(tree_count)) # arrange(tree_count) puts them in order from low to high, if you want the opposite (high to low) then do either arrange(-tree_count) or arrange(desc(tree_count))
+```
+
+If you don't know what a function is doing, go to console and type `?drop_na` for example and it will define what the drop_na function does
+
+
+
+Make a graph of top 5 from above:
+
+```{r}
+ggplot(data = top_5_status, aes(x = fct_reorder(legal_status,tree_count), y = tree_count)) +
+  geom_col(fill = 'darkgreen') +
+  labs(x = 'Legal status', y = 'Tree count') +
+  coord_flip() +
+  theme_minimal()
+```
+
+
+
+**Example 2:** Only going to keep observations where legal status is "Permitted Site" and caretaker is "MTA", and store as `permitted_data_df`
+
+shift-cmd-c to comment/uncomment quickly
+
+```{r}
+# sf_trees$legal_status %>% unique()     This will tell the unique legal_status types if ran.
+# unique(sf_trees$caretaker)
+
+permitted_data_df <- sf_trees %>% 
+  filter(legal_status == 'Permitted Site' & caretaker == 'MTA') # using a , or an & does the same thing. They say they want both to be true. If you use a vertical bar | then you are saying you want: one or the other or both at the same time
+# if you want to say you want the legal status to be either permitted site or private then you could say: filter(legal_status %in% c('Permitted Site', 'Private') & caretaker == 'MTA')
+```
+
+
+
+**Example 3:** Only keep Blackwood Acacia trees, and then only keep columns `legal_status`, `date`, `latitude`, `longitude` and store as `blackwood_acacia_df`
+
+```{r}
+blackwood_acacia_df <- sf_trees %>%
+  filter(str_detect(species, 'Blackwood Acacia')) %>% 
+  select(legal_status, date, lat = latitude, lon = longitude)
+
+### Make a little graph of locations
+ggplot(data = blackwood_acacia_df, aes(x = lon, y = lat)) +
+  geom_point(color = 'darkgreen')
+```
+
+**Example 4:** use `tidyr::separate()`
+
+```{r}
+sf_trees_sep <- sf_trees %>% 
+  separate(species, into = c('spp_scientific', 'spp_common'), sep = ' :: ')
+```
+
+** Example 5:** use `tidyr::unite()`
+
+```{r}
+ex_5 <- sf_trees %>% 
+  unite('id_status', tree_id, legal_status, sep = '_COOL_')
+```
+
+
+
+
+
+
